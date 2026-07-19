@@ -2,10 +2,10 @@ import type { SitepingConfig } from "./vendor/core/types.js";
 import { parseSvg, setText } from "./dom-utils.js";
 import type { EventBus, WidgetEvents } from "./events.js";
 import type { TFunction, Translations } from "./i18n/index.js";
-import { ICON_CLOSE, ICON_EDIT, ICON_EYE, ICON_EYE_OFF, ICON_LIST, ICON_SITEPING } from "./icons.js";
+import { ICON_CLOSE, ICON_EDIT, ICON_SITEPING } from "./icons.js";
 
 /** Closed set of radial menu item ids — keeps the label lookup exhaustive. */
-type RadialItemId = "chat" | "annotate" | "toggle-annotations";
+type RadialItemId = "annotate";
 
 interface RadialItem {
   id: RadialItemId;
@@ -19,9 +19,7 @@ const ITEM_GAP = 54;
 // label is fully derived from this map via `t()`, so the constructor and
 // `applyLabels()` share one source of truth for which node gets which string.
 const ITEM_LABEL_KEYS: Record<RadialItemId, keyof Translations> = {
-  chat: "fab.messages",
   annotate: "fab.annotate",
-  "toggle-annotations": "fab.annotations",
 };
 
 /**
@@ -36,7 +34,6 @@ export class Fab {
   private radialContainer: HTMLElement;
   private badgeEl: HTMLElement | null = null;
   private isOpen = false;
-  private annotationsVisible = true;
   private items: RadialItem[];
 
   constructor(
@@ -48,20 +45,8 @@ export class Fab {
     const position = config.position ?? "bottom-right";
     const isRight = position === "bottom-right";
 
-    // Vertical stack above the FAB. Icons:
-    // - list  → opens the feedback sidebar (panel of feedbacks).
-    // - edit  → creates a new annotation (the action).
-    // - eye   → toggles marker visibility on the page (state).
-    // The marker-visibility toggle is opt-out via `config.showAnnotationsToggle`:
-    // default `true` preserves historical behavior, `false` removes the item from
-    // the menu entirely (no DOM, no keyboard slot, no click handler).
-    this.items = [
-      { id: "chat", icon: ICON_LIST },
-      { id: "annotate", icon: ICON_EDIT },
-    ];
-    if (config.showAnnotationsToggle !== false) {
-      this.items.push({ id: "toggle-annotations", icon: ICON_EYE, iconAlt: ICON_EYE_OFF });
-    }
+    // The radial menu contains only the annotation action.
+    this.items = [{ id: "annotate", icon: ICON_EDIT }];
 
     // FAB button — needs position:relative for badge positioning
     this.fab = document.createElement("button");
@@ -269,9 +254,6 @@ export class Fab {
     this.close();
 
     switch (id) {
-      case "chat":
-        this.bus.emit("panel:toggle", true);
-        break;
       case "annotate": {
         // close() above re-focused the FAB, so the annotator can only capture
         // the shadow host as its pre-activation element — restoring focus is
@@ -281,20 +263,6 @@ export class Fab {
           this.fab.focus();
         });
         this.bus.emit("annotation:start");
-        break;
-      }
-      case "toggle-annotations": {
-        this.annotationsVisible = !this.annotationsVisible;
-        this.bus.emit("annotations:toggle", this.annotationsVisible);
-        // Replace ONLY the icon SVG, not every child. The button also carries
-        // the `<span class="sp-radial-label">` hover label — `replaceChildren`
-        // wiped it on the first click, killing the tooltip until reload.
-        const btn = this.radialContainer.querySelector('[data-item-id="toggle-annotations"]');
-        const oldSvg = btn?.querySelector("svg");
-        if (oldSvg) {
-          const newSvg = parseSvg(this.annotationsVisible ? ICON_EYE : ICON_EYE_OFF);
-          oldSvg.replaceWith(newSvg);
-        }
         break;
       }
     }

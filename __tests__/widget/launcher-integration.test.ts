@@ -1475,10 +1475,10 @@ describe("launcher — annotation:complete integration", () => {
         expect(mockAnnotatorRefreshLabels).toHaveBeenCalled();
       });
 
-      // Radial item labels are German too
-      const chatItem = shadow.querySelector<HTMLButtonElement>('[data-item-id="chat"]')!;
-      expect(chatItem.getAttribute("aria-label")).toBe("Seitenleiste anzeigen");
-      expect(chatItem.querySelector(".sp-radial-label")?.textContent).toBe("Seitenleiste anzeigen");
+      // The sole radial item is localized too.
+      const annotateItem = shadow.querySelector<HTMLButtonElement>('[data-item-id="annotate"]')!;
+      expect(annotateItem.getAttribute("aria-label")).toBe("Neue Anmerkung erstellen");
+      expect(annotateItem.querySelector(".sp-radial-label")?.textContent).toBe("Neue Anmerkung erstellen");
 
       instance.destroy();
     });

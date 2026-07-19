@@ -100,8 +100,7 @@ function createAnnotator() {
 
 /**
  * Find the annotator overlay — the focusable (tabindex="0") screenshot-ignored
- * div appended to body (the toolbar carries data-siteping-ignore too, but no
- * tabindex).
+ * div appended to body.
  */
 function findOverlay(): HTMLElement | null {
   return document.body.querySelector<HTMLElement>('div[data-siteping-ignore][tabindex="0"]');
@@ -130,7 +129,7 @@ describe("Annotator", () => {
 
   afterEach(() => {
     annotator.destroy();
-    // Remove any leftover overlay/toolbar DOM from async handlers that may not
+    // Remove any leftover overlay DOM from async handlers that may not
     // have completed before the test ended (e.g. finishDrawing's await)
     for (const el of document.body.querySelectorAll('div[data-siteping-ignore][tabindex="0"]')) {
       el.remove();
@@ -191,13 +190,12 @@ describe("Annotator", () => {
       }
     });
 
-    it("creates a toolbar element (button with cancel text) on activation", () => {
+    it("does not render an instruction toolbar or cancel button on activation", () => {
       bus.emit("annotation:start");
 
-      // Toolbar contains a cancel button
       const buttons = document.body.querySelectorAll("button");
       const hasCancel = Array.from(buttons).some((btn) => btn.textContent === t("annotator.cancel"));
-      expect(hasCancel).toBe(true);
+      expect(hasCancel).toBe(false);
     });
 
     it("registers an Escape keydown listener on the document", () => {
@@ -237,17 +235,10 @@ describe("Annotator", () => {
       expect(overlay.getAttribute("data-siteping-ignore")).toBe("true");
     });
 
-    it("toolbar carries data-siteping-ignore so it is excluded from screenshots", () => {
+    it("keeps the single annotation overlay excluded from screenshots", () => {
       bus.emit("annotation:start");
 
-      // The toolbar is the sibling of the overlay — pick the one that hosts
-      // the cancel button (the toolbar) rather than the overlay itself.
-      const cancelBtn = Array.from(document.body.querySelectorAll("button")).find(
-        (btn) => btn.textContent === t("annotator.cancel"),
-      )!;
-      const toolbar = cancelBtn.closest("div[data-siteping-ignore]");
-      expect(toolbar).not.toBeNull();
-      expect(toolbar!.getAttribute("data-siteping-ignore")).toBe("true");
+      expect(document.body.querySelectorAll("div[data-siteping-ignore]")).toHaveLength(1);
     });
 
     it("drawing rect carries data-siteping-ignore so the selection border is excluded from screenshots", () => {
@@ -263,7 +254,7 @@ describe("Annotator", () => {
   });
 
   describe("deactivate", () => {
-    it("removes overlay and toolbar from DOM", () => {
+    it("removes the overlay from DOM", () => {
       bus.emit("annotation:start");
       expect(findOverlay()).not.toBeNull();
 
@@ -531,34 +522,6 @@ describe("Annotator", () => {
   });
 
   // -------------------------------------------------------------------------
-  // Cancel button
-  // -------------------------------------------------------------------------
-
-  describe("cancel button", () => {
-    it("clicking cancel button deactivates the annotator", () => {
-      bus.emit("annotation:start");
-      expect(findOverlay()).not.toBeNull();
-
-      // The toolbar is the last div appended to body (after the overlay)
-      // Find all buttons and check which one has the cancel text
-      const allButtons = Array.from(document.body.querySelectorAll("button"));
-      const cancelButtons = allButtons.filter((btn) => btn.textContent === t("annotator.cancel"));
-      // There should be exactly one cancel button with this text
-      expect(cancelButtons).toHaveLength(1);
-
-      // The cancel button is the LAST one (most recently added by activate())
-      const cancelBtn = cancelButtons[cancelButtons.length - 1];
-
-      // Simulate clicking by dispatching the event on the button
-      const endListener = vi.fn();
-      bus.on("annotation:end", endListener);
-
-      cancelBtn.click();
-
-      expect(endListener).toHaveBeenCalledOnce();
-    });
-  });
-
   // -------------------------------------------------------------------------
   // Keyboard annotation (Enter key)
   // -------------------------------------------------------------------------
@@ -685,43 +648,6 @@ describe("Annotator", () => {
   });
 
   // -------------------------------------------------------------------------
-  // Cancel button hover effects
-  // -------------------------------------------------------------------------
-
-  describe("cancel button hover effects", () => {
-    it("mouseenter on cancel changes styles", () => {
-      bus.emit("annotation:start");
-
-      const buttons = document.body.querySelectorAll("button");
-      const cancelBtn = Array.from(buttons).find((btn) => btn.textContent === t("annotator.cancel"))!;
-
-      const borderBefore = cancelBtn.style.borderColor;
-      const colorBefore = cancelBtn.style.color;
-
-      cancelBtn.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
-
-      // jsdom normalizes hex to rgb — just check the style changed
-      expect(cancelBtn.style.borderColor).not.toBe(borderBefore);
-      expect(cancelBtn.style.color).not.toBe(colorBefore);
-    });
-
-    it("mouseleave on cancel restores styles", () => {
-      bus.emit("annotation:start");
-
-      const buttons = document.body.querySelectorAll("button");
-      const cancelBtn = Array.from(buttons).find((btn) => btn.textContent === t("annotator.cancel"))!;
-
-      cancelBtn.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true }));
-      const hoverBorder = cancelBtn.style.borderColor;
-      const hoverColor = cancelBtn.style.color;
-
-      cancelBtn.dispatchEvent(new MouseEvent("mouseleave", { bubbles: true }));
-      // After mouseleave, border and color should differ from hover state
-      expect(cancelBtn.style.borderColor).not.toBe(hoverBorder);
-      expect(cancelBtn.style.color).not.toBe(hoverColor);
-    });
-  });
-
   // -------------------------------------------------------------------------
   // Popup dismissal branches (lines 320-322)
   // -------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 import type { AnnotationPayload, FeedbackType } from "./vendor/core/types.js";
 import { Z_INDEX_MAX } from "./constants.js";
 import { findAnchorElement, generateAnchor, rectToPercentages } from "./dom/anchor.js";
-import { el, setText } from "./dom-utils.js";
+import { el } from "./dom-utils.js";
 import type { EventBus, WidgetEvents } from "./events.js";
 import type { TFunction } from "./i18n/index.js";
 import { Popup } from "./popup.js";
@@ -22,14 +22,11 @@ export interface AnnotationComplete {
 /**
  * Annotation mode: full-page overlay with rectangle drawing.
  *
- * Glassmorphism design:
- * - Frosted glass toolbar at top
- * - Subtle tinted overlay
- * - Accent-colored drawing rectangle with glow
+ * The overlay keeps page context visible while an accent-colored rectangle
+ * marks the selected element or area.
  */
 export class Annotator {
   private overlay: HTMLElement | null = null;
-  private toolbar: HTMLElement | null = null;
   private drawingRect: HTMLElement | null = null;
   private startX = 0;
   private startY = 0;
@@ -61,9 +58,7 @@ export class Annotator {
   }
 
   /**
-   * Re-read every `t(...)`-derived label inside the popup. The annotator's
-   * own toolbar text is created fresh on every `activate()` call, so only
-   * the long-lived popup needs explicit re-localization here.
+   * Re-read every `t(...)`-derived label inside the long-lived popup.
    */
   refreshLabels(): void {
     this.popup.refreshLabels();
@@ -102,7 +97,7 @@ export class Annotator {
 
     // Overlay — subtle blue tint for depth.
     //
-    // Overlay, toolbar and the drawn rectangle live on document.body, outside
+    // Overlay and the drawn rectangle live on document.body, outside
     // the siteping-widget shadow host. Without the `data-siteping-ignore`
     // marker the screenshot predicate in screenshot.ts cannot reach them —
     // and the accent-colored selection border plus the page tint end up
@@ -124,71 +119,6 @@ export class Annotator {
     this.overlay.setAttribute("aria-label", this.t("annotator.instruction"));
     this.overlay.setAttribute("data-siteping-ignore", "true");
 
-    // Toolbar — glassmorphism bar
-    this.toolbar = el("div", {
-      style: `
-        position:fixed;top:0;left:0;right:0;
-        z-index:${Z_INDEX_MAX};
-        height:52px;
-        background:${this.colors.glassBg};
-        backdrop-filter:blur(24px);
-        -webkit-backdrop-filter:blur(24px);
-        border-bottom:1px solid ${this.colors.glassBorder};
-        display:flex;align-items:center;justify-content:center;gap:16px;
-        font-family:"Inter",system-ui,-apple-system,sans-serif;
-        font-size:14px;color:${this.colors.text};
-        box-shadow:0 4px 16px ${this.colors.shadow};
-        -webkit-font-smoothing:antialiased;
-      `,
-    });
-    this.toolbar.setAttribute("data-siteping-ignore", "true");
-
-    const dot = el("span", {
-      style: `
-        width:8px;height:8px;border-radius:50%;
-        background:${this.colors.accent};
-        box-shadow:0 0 8px ${this.colors.accentGlow};
-        animation:pulse 1.5s ease-in-out infinite;
-      `,
-    });
-
-    // Add pulse animation inline (respects prefers-reduced-motion)
-    const style = document.createElement("style");
-    style.textContent = [
-      "@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}",
-      "@media(prefers-reduced-motion:reduce){@keyframes pulse{from,to{opacity:1}}}",
-    ].join("");
-    this.toolbar.appendChild(style);
-
-    const instruction = el("span", { style: "font-weight:500;letter-spacing:-0.01em;" });
-    setText(instruction, this.t("annotator.instruction"));
-
-    const cancelBtn = document.createElement("button");
-    cancelBtn.style.cssText = `
-      height:34px;padding:0 18px;border-radius:9999px;
-      border:1px solid ${this.colors.border};
-      background:${this.colors.glassBg};
-      color:${this.colors.textTertiary};font-family:"Inter",system-ui,-apple-system,sans-serif;
-      font-size:13px;font-weight:500;cursor:pointer;
-      transition:all 0.2s ease;
-    `;
-    setText(cancelBtn, this.t("annotator.cancel"));
-    cancelBtn.addEventListener("click", () => this.deactivate());
-    cancelBtn.addEventListener("mouseenter", () => {
-      cancelBtn.style.borderColor = this.colors.typeBug;
-      cancelBtn.style.color = this.colors.typeBug;
-      cancelBtn.style.background = this.colors.typeBugBg;
-    });
-    cancelBtn.addEventListener("mouseleave", () => {
-      cancelBtn.style.borderColor = this.colors.border;
-      cancelBtn.style.color = this.colors.textTertiary;
-      cancelBtn.style.background = this.colors.glassBg;
-    });
-
-    this.toolbar.appendChild(dot);
-    this.toolbar.appendChild(instruction);
-    this.toolbar.appendChild(cancelBtn);
-
     // Mouse events
     this.overlay.addEventListener("mousedown", this.onMouseDown);
     this.overlay.addEventListener("mousemove", this.onMouseMove);
@@ -209,7 +139,6 @@ export class Annotator {
     document.addEventListener("keydown", this.onKeyDown);
 
     document.body.appendChild(this.overlay);
-    document.body.appendChild(this.toolbar);
 
     // Move focus to the overlay so the keyboard-annotation path (Enter →
     // annotate the element that was focused before activation) actually
@@ -238,10 +167,8 @@ export class Annotator {
     document.removeEventListener("keydown", this.onKeyDown);
 
     this.overlay?.remove();
-    this.toolbar?.remove();
     this.drawingRect?.remove();
     this.overlay = null;
-    this.toolbar = null;
     this.drawingRect = null;
 
     // Removing the focused overlay drops focus to <body> — hand it back to the

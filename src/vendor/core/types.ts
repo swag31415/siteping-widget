@@ -55,17 +55,9 @@ export interface SitepingConfig {
   /** FAB position — defaults to 'bottom-right' */
   position?: SitepingPosition;
   /**
-   * Show the "toggle markers visibility" item in the FAB radial menu.
-   * Defaults to `true` (current behavior). Set to `false` to hide that
-   * item entirely — useful for hosts that always want markers visible
-   * (e.g. dedicated review tools) or that find the eye icon redundant
-   * when no marker is on screen.
-   *
-   * Hiding the item also removes its keyboard navigation slot — the
-   * remaining two items still respond to ArrowUp/ArrowDown/Home/End.
-   * The marker-visibility state itself is unaffected; markers stay
-   * visible (the previous default state) and `annotations:toggle` is
-   * simply never emitted from the FAB.
+   * @deprecated This annotation-only fork never renders a marker-visibility
+   * FAB action, so this option has no effect. It remains accepted for
+   * compatibility with the upstream SitePing configuration type.
    */
   showAnnotationsToggle?: boolean | undefined;
   /** Accent color for the widget UI — defaults to '#0066ff' */

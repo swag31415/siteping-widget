@@ -74,33 +74,22 @@ describe("Fab", () => {
       expect(menu).not.toBeNull();
     });
 
-    it("creates three radial menu items with role=menuitem", () => {
+    it("creates one annotate radial menu item with role=menuitem", () => {
       const items = shadow.querySelectorAll('[role="menuitem"]');
-      expect(items.length).toBe(3);
+      expect(items.length).toBe(1);
     });
 
     it("assigns correct data-item-id to each menu item", () => {
       const items = getRadialItems(shadow);
       const ids = items.map((btn) => btn.dataset.itemId);
-      expect(ids).toEqual(["chat", "annotate", "toggle-annotations"]);
+      expect(ids).toEqual(["annotate"]);
     });
 
-    it("renders the documented icon family — list for chat, pencil for annotate, eye for toggle", () => {
-      // Locks the icon swap in #128: list-icon for the sidebar action, pencil
-      // for the create-annotation action, eye for the visibility toggle. Tied
-      // to the visible labels, so any future relabel that drops these icons
-      // forces a test update.
+    it("renders the pencil icon for the annotate action", () => {
       const items = getRadialItems(shadow);
-      const chatSvg = items.find((b) => b.dataset.itemId === "chat")?.querySelector("svg");
       const annotateSvg = items.find((b) => b.dataset.itemId === "annotate")?.querySelector("svg");
-      const toggleSvg = items.find((b) => b.dataset.itemId === "toggle-annotations")?.querySelector("svg");
 
-      // The list icon has 6 <line> children (3 bullets + 3 rows); the chat
-      // bubble it replaced had a single <path>. The pencil has 2 <path>s.
-      // The eye has 1 <path> + 1 <circle>. These shapes are stable signatures.
-      expect(chatSvg?.querySelectorAll("line").length).toBe(6);
       expect(annotateSvg?.querySelectorAll("path").length).toBe(2);
-      expect(toggleSvg?.querySelector("circle")).not.toBeNull();
     });
 
     it("applies position class based on config", () => {
@@ -122,59 +111,48 @@ describe("Fab", () => {
   });
 
   // -------------------------------------------------------------------------
-  // showAnnotationsToggle — opt-out for the marker-visibility radial item
+  // showAnnotationsToggle no longer affects the annotation-only menu
   // -------------------------------------------------------------------------
 
   describe("config.showAnnotationsToggle", () => {
-    it("defaults to true — toggle-annotations item is present when the option is omitted", () => {
-      // The shared `beforeEach` builds the FAB with defaultConfig() (no
-      // showAnnotationsToggle key) — so this asserts the default branch.
+    it("does not add marker visibility controls when omitted", () => {
       const items = getRadialItems(shadow);
       const ids = items.map((btn) => btn.dataset.itemId);
-      expect(ids).toContain("toggle-annotations");
-      expect(items.length).toBe(3);
+      expect(ids).toEqual(["annotate"]);
     });
 
-    it("`true` (explicit) keeps the toggle-annotations item", () => {
+    it("`true` still keeps the menu annotation-only", () => {
       fab.destroy();
       shadow.host.remove();
       shadow = createShadowRoot();
       fab = new Fab(shadow, { ...defaultConfig(), showAnnotationsToggle: true }, bus, createT("fr"));
 
       const ids = getRadialItems(shadow).map((btn) => btn.dataset.itemId);
-      expect(ids).toEqual(["chat", "annotate", "toggle-annotations"]);
+      expect(ids).toEqual(["annotate"]);
     });
 
-    it("`false` hides the toggle-annotations item entirely — no DOM, no click handler", () => {
+    it("`false` keeps the menu annotation-only", () => {
       fab.destroy();
       shadow.host.remove();
       shadow = createShadowRoot();
       fab = new Fab(shadow, { ...defaultConfig(), showAnnotationsToggle: false }, bus, createT("fr"));
 
       const ids = getRadialItems(shadow).map((btn) => btn.dataset.itemId);
-      expect(ids).toEqual(["chat", "annotate"]);
+      expect(ids).toEqual(["annotate"]);
       expect(shadow.querySelector('[data-item-id="toggle-annotations"]')).toBeNull();
     });
 
-    it("`false` — `annotations:toggle` is never emitted from the FAB even when the menu is opened and the bottom items are clicked", () => {
+    it("never renders the removed actions", () => {
       fab.destroy();
       shadow.host.remove();
       shadow = createShadowRoot();
       fab = new Fab(shadow, { ...defaultConfig(), showAnnotationsToggle: false }, bus, createT("fr"));
 
-      const listener = vi.fn();
-      bus.on("annotations:toggle", listener);
-
-      const fabBtn = shadow.querySelector<HTMLButtonElement>(".sp-fab")!;
-      fabBtn.click(); // open
-      shadow.querySelector<HTMLButtonElement>('[data-item-id="chat"]')!.click();
-      fabBtn.click(); // reopen
-      shadow.querySelector<HTMLButtonElement>('[data-item-id="annotate"]')!.click();
-
-      expect(listener).not.toHaveBeenCalled();
+      expect(shadow.querySelector('[data-item-id="chat"]')).toBeNull();
+      expect(shadow.querySelector('[data-item-id="toggle-annotations"]')).toBeNull();
     });
 
-    it("`false` — keyboard navigation still cycles through the remaining two items", () => {
+    it("`false` — keyboard navigation keeps focus on the sole action", () => {
       fab.destroy();
       shadow.host.remove();
       shadow = createShadowRoot();
@@ -185,13 +163,9 @@ describe("Fab", () => {
 
       const items = getRadialItems(shadow);
       const radial = shadow.querySelector<HTMLElement>('[role="menu"]')!;
-      expect(items.length).toBe(2);
+      expect(items.length).toBe(1);
 
       items[0]!.focus();
-      radial.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
-      expect(shadow.activeElement).toBe(items[1]);
-
-      // ArrowDown again wraps back to the first item (last → first)
       radial.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
       expect(shadow.activeElement).toBe(items[0]);
     });
@@ -253,7 +227,7 @@ describe("Fab", () => {
   // -------------------------------------------------------------------------
 
   describe("keyboard navigation", () => {
-    it("ArrowDown cycles forward through menu items", () => {
+    it("ArrowDown keeps focus on the sole menu item", () => {
       const fabBtn = shadow.querySelector<HTMLButtonElement>(".sp-fab")!;
       fabBtn.click(); // open menu
 
@@ -264,22 +238,21 @@ describe("Fab", () => {
       items[0].focus();
       expect(shadow.activeElement).toBe(items[0]);
 
-      // ArrowDown should move to second item
+      // The only action is also the next action.
       radial.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
-      expect(shadow.activeElement).toBe(items[1]);
+      expect(shadow.activeElement).toBe(items[0]);
     });
 
-    it("ArrowUp cycles backward through menu items", () => {
+    it("ArrowUp keeps focus on the sole menu item", () => {
       const fabBtn = shadow.querySelector<HTMLButtonElement>(".sp-fab")!;
       fabBtn.click();
 
       const items = getRadialItems(shadow);
       const radial = shadow.querySelector<HTMLElement>('[role="menu"]')!;
 
-      // Focus the second item
-      items[1].focus();
+      items[0].focus();
 
-      // ArrowUp should move to first item
+      // The only action is also the previous action.
       radial.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true }));
       expect(shadow.activeElement).toBe(items[0]);
     });
@@ -321,7 +294,7 @@ describe("Fab", () => {
       const items = getRadialItems(shadow);
       const radial = shadow.querySelector<HTMLElement>('[role="menu"]')!;
 
-      items[2].focus();
+      items[0].focus();
       radial.dispatchEvent(new KeyboardEvent("keydown", { key: "Home", bubbles: true }));
       expect(shadow.activeElement).toBe(items[0]);
     });
@@ -344,19 +317,6 @@ describe("Fab", () => {
   // -------------------------------------------------------------------------
 
   describe("menu item clicks", () => {
-    it("clicking 'chat' item emits panel:toggle with true", () => {
-      const listener = vi.fn();
-      bus.on("panel:toggle", listener);
-
-      const fabBtn = shadow.querySelector<HTMLButtonElement>(".sp-fab")!;
-      fabBtn.click(); // open menu
-
-      const chatBtn = shadow.querySelector<HTMLButtonElement>('[data-item-id="chat"]')!;
-      chatBtn.click();
-
-      expect(listener).toHaveBeenCalledWith(true);
-    });
-
     it("clicking 'annotate' item emits annotation:start", () => {
       const listener = vi.fn();
       bus.on("annotation:start", listener);
@@ -403,26 +363,11 @@ describe("Fab", () => {
       }
     });
 
-    it("clicking 'toggle-annotations' emits annotations:toggle", () => {
-      const listener = vi.fn();
-      bus.on("annotations:toggle", listener);
-
-      const fabBtn = shadow.querySelector<HTMLButtonElement>(".sp-fab")!;
-      fabBtn.click();
-
-      const toggleBtn = shadow.querySelector<HTMLButtonElement>('[data-item-id="toggle-annotations"]')!;
-      toggleBtn.click();
-
-      // First toggle: was visible (true), now hidden (false)
-      expect(listener).toHaveBeenCalledWith(false);
-    });
-
     it("closes the radial menu after a menu item is clicked", () => {
       const fabBtn = shadow.querySelector<HTMLButtonElement>(".sp-fab")!;
       fabBtn.click(); // open
 
-      const chatBtn = shadow.querySelector<HTMLButtonElement>('[data-item-id="chat"]')!;
-      chatBtn.click();
+      shadow.querySelector<HTMLButtonElement>('[data-item-id="annotate"]')!.click();
 
       expect(fabBtn.getAttribute("aria-expanded")).toBe("false");
     });
@@ -667,17 +612,11 @@ describe("Fab", () => {
       expect(fabBtn.getAttribute("aria-label")).toBe("SWAPPED:fab.aria");
 
       const items = getRadialItems(shadow);
-      const chatItem = items.find((b) => b.dataset.itemId === "chat")!;
       const annotateItem = items.find((b) => b.dataset.itemId === "annotate")!;
-      const toggleItem = items.find((b) => b.dataset.itemId === "toggle-annotations")!;
 
-      expect(chatItem.getAttribute("aria-label")).toBe("SWAPPED:fab.messages");
       expect(annotateItem.getAttribute("aria-label")).toBe("SWAPPED:fab.annotate");
-      expect(toggleItem.getAttribute("aria-label")).toBe("SWAPPED:fab.annotations");
 
-      expect(chatItem.querySelector(".sp-radial-label")?.textContent).toBe("SWAPPED:fab.messages");
       expect(annotateItem.querySelector(".sp-radial-label")?.textContent).toBe("SWAPPED:fab.annotate");
-      expect(toggleItem.querySelector(".sp-radial-label")?.textContent).toBe("SWAPPED:fab.annotations");
     });
 
     it("is idempotent — calling twice with the same `t` is a no-op on values", () => {
@@ -695,75 +634,4 @@ describe("Fab", () => {
     });
   });
 
-  describe("toggle-annotations icon swap", () => {
-    it("two consecutive toggles swap the icon back to ICON_EYE (true branch of cond-expr)", () => {
-      const fabBtn = shadow.querySelector<HTMLButtonElement>(".sp-fab")!;
-      const toggleBtnSelector = '[data-item-id="toggle-annotations"]';
-
-      // First toggle: visible -> hidden, icon becomes EYE_OFF
-      fabBtn.click();
-      let toggleBtn = shadow.querySelector<HTMLButtonElement>(toggleBtnSelector)!;
-      toggleBtn.click();
-
-      // Second toggle: hidden -> visible, icon becomes EYE again
-      fabBtn.click();
-      toggleBtn = shadow.querySelector<HTMLButtonElement>(toggleBtnSelector)!;
-
-      const listener = vi.fn();
-      bus.on("annotations:toggle", listener);
-      toggleBtn.click();
-
-      // The bus should now emit annotations:toggle with true (back to visible)
-      expect(listener).toHaveBeenCalledWith(true);
-    });
-
-    // Regression: clicking the toggle used `replaceChildren(parseSvg(...))`,
-    // which dropped the `<span class="sp-radial-label">` alongside the old
-    // SVG — killing the hover label tooltip until a page reload. The fix
-    // swaps the SVG node in place and leaves the label span untouched.
-    it("preserves the hover label span across consecutive toggles", () => {
-      const fabBtn = shadow.querySelector<HTMLButtonElement>(".sp-fab")!;
-      const toggleBtnSelector = '[data-item-id="toggle-annotations"]';
-      const t = createT("fr");
-      const expectedLabel = t("fab.annotations");
-
-      fabBtn.click();
-      const toggleBtn = shadow.querySelector<HTMLButtonElement>(toggleBtnSelector)!;
-
-      // Sanity: label span exists with the translated text before any click.
-      const labelBefore = toggleBtn.querySelector<HTMLSpanElement>(".sp-radial-label");
-      expect(labelBefore).not.toBeNull();
-      expect(labelBefore!.textContent).toBe(expectedLabel);
-
-      // First click — was the regression trigger.
-      toggleBtn.click();
-
-      const labelAfterFirst = toggleBtn.querySelector<HTMLSpanElement>(".sp-radial-label");
-      expect(labelAfterFirst).not.toBeNull();
-      expect(labelAfterFirst!.textContent).toBe(expectedLabel);
-
-      // Re-open and toggle again — span must still survive the second swap.
-      fabBtn.click();
-      const toggleAgain = shadow.querySelector<HTMLButtonElement>(toggleBtnSelector)!;
-      toggleAgain.click();
-
-      const labelAfterSecond = toggleAgain.querySelector<HTMLSpanElement>(".sp-radial-label");
-      expect(labelAfterSecond).not.toBeNull();
-      expect(labelAfterSecond!.textContent).toBe(expectedLabel);
-    });
-
-    it("replaces only the SVG icon — button has exactly one <svg> and one .sp-radial-label after each toggle", () => {
-      const fabBtn = shadow.querySelector<HTMLButtonElement>(".sp-fab")!;
-      const toggleBtnSelector = '[data-item-id="toggle-annotations"]';
-
-      fabBtn.click();
-      const toggleBtn = shadow.querySelector<HTMLButtonElement>(toggleBtnSelector)!;
-
-      for (let i = 0; i < 3; i++) {
-        toggleBtn.click();
-        expect(toggleBtn.querySelectorAll("svg").length).toBe(1);
-        expect(toggleBtn.querySelectorAll(".sp-radial-label").length).toBe(1);
-      }
-    });
-  });
 });
