@@ -1,0 +1,75 @@
+{
+  "name": "@swag31415/siteping-widget",
+  "version": "0.9.15",
+  "private": true,
+  "description": "Feedback widget for client review during development — annotations, bugs, questions directly on the site. Forked and stripped down from NeosiaNexus/SitePing (packages/widget) for internal use.",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "script": "./dist/index.global.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    }
+  },
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "check": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "test": "vitest",
+    "test:run": "vitest run"
+  },
+  "keywords": [
+    "feedback",
+    "widget",
+    "annotation",
+    "client-review",
+    "development",
+    "bug-reporting",
+    "visual-feedback",
+    "website-feedback",
+    "dom-annotation",
+    "self-hosted",
+    "shadow-dom",
+    "lightweight"
+  ],
+  "author": "neosianexus (original), swag31415 (fork)",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@medv/finder": "^4.0.2",
+    "html2canvas": "^1.4.1"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^25.9.5",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "@vitest/coverage-istanbul": "^3.2.7",
+    "jsdom": "29.1.1",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  }
+}
