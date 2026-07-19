@@ -23,6 +23,7 @@
   ],
   "scripts": {
     "build": "tsup",
+    "prepare": "tsup",
     "check": "tsc --noEmit",
     "clean": "rm -rf dist",
     "test": "vitest",
